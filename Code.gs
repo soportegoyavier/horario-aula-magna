@@ -215,7 +215,15 @@ function eliminarEvento(id) {
       const numFilas = evtDatos.filaFin - evtDatos.filaIni + 1;
       const rango = sheet.getRange(evtDatos.filaIni, evtDatos.columna, numFilas, 1);
       try { rango.breakApart(); } catch (e) {}
-      rango.clearContent().clearFormat().setBackground(BG_VACIO);
+      // clearFormat() borra bordes — solo reseteamos lo que agregarEvento modificó
+      rango.clearContent()
+           .setBackground(BG_VACIO)
+           .setFontColor('#000000')
+           .setFontWeight('normal')
+           .setFontSize(9)
+           .setWrap(false)
+           .setVerticalAlignment('middle')
+           .setHorizontalAlignment('center');
     }
 
     hojaD.deleteRow(filaObjetivo);
