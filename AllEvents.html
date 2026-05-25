@@ -109,7 +109,7 @@
       'Clase/Taller':       '#003322'
     };
 
-    const todos = <?= eventosJson ?>;
+    const todos = <?!= eventosJson ?>;
     document.getElementById('contador').textContent = todos.length + ' evento(s) registrado(s)';
     renderizar(todos);
 
