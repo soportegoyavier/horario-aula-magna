@@ -34,10 +34,12 @@ function onOpen(e) {
     if (esEditor()) {
       SpreadsheetApp.getUi()
         .createMenu('Aula Magna')
-        .addItem('Agregar Evento', 'mostrarAgregarEvento')
-        .addItem('Eliminar Evento', 'mostrarEliminarEvento')
+        .addItem('Agregar Evento',      'mostrarAgregarEvento')
+        .addItem('Eliminar Evento',     'mostrarEliminarEvento')
         .addSeparator()
         .addItem('Ver Todos los Eventos', 'mostrarTodosEventos')
+        .addSeparator()
+        .addItem('Crear nuevo mes',     'mostrarCrearMes')
         .addToUi();
     }
   } catch (err) {
@@ -77,6 +79,12 @@ function mostrarTodosEventos() {
   const tmpl = HtmlService.createTemplateFromFile('AllEvents');
   tmpl.eventosJson = JSON.stringify(obtenerTodosEventos());
   SpreadsheetApp.getUi().showSidebar(tmpl.evaluate().setTitle('Todos los Eventos'));
+}
+
+function mostrarCrearMes() {
+  const html = HtmlService.createHtmlOutputFromFile('CreateMonth')
+    .setTitle('Crear Nuevo Mes');
+  SpreadsheetApp.getUi().showSidebar(html);
 }
 
 // =====================================================================
@@ -312,4 +320,130 @@ function obtenerOCrearHojaDatos() {
     s.setFrozenRows(1);
   }
   return s;
+}
+
+// =====================================================================
+// CREAR MES
+// =====================================================================
+function obtenerDatosCrearMes() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const existentes = ss.getSheets()
+    .map(s => s.getName().toUpperCase())
+    .filter(n => n !== HOJA_DATOS);
+  return {
+    year: new Date().getFullYear(),
+    meses: Object.keys(MESES_IDX),
+    existentes
+  };
+}
+
+function crearMes(datos) {
+  try {
+    const ss      = SpreadsheetApp.getActiveSpreadsheet();
+    const nombre  = datos.mes.toUpperCase();
+    const year    = parseInt(datos.year);
+    const mesIdx  = MESES_IDX[nombre];
+
+    if (mesIdx === undefined) return { ok: false, msg: 'Mes no reconocido.' };
+    if (ss.getSheetByName(nombre)) return { ok: false, msg: `La hoja "${nombre}" ya existe.` };
+
+    const semanas  = calcularSemanasDelMes(mesIdx, year);
+    const hojaD    = ss.getSheetByName(HOJA_DATOS);
+    const posicion = hojaD ? hojaD.getIndex() - 1 : ss.getSheets().length;
+    const sheet    = ss.insertSheet(nombre, posicion);
+
+    const COLOR_HEADER  = '#37474F'; // encabezado semana
+    const COLOR_DIAS    = '#455A64'; // fila de días y HORA
+    const COLOR_TEXTO   = '#FFFFFF';
+
+    let fila = 1;
+
+    for (const semana of semanas) {
+      // Fila 1: encabezado de semana (celdas combinadas A-H)
+      const rngSemana = sheet.getRange(fila, 1, 1, 8);
+      rngSemana.merge()
+               .setValue(semana.label)
+               .setBackground(COLOR_HEADER)
+               .setFontColor(COLOR_TEXTO)
+               .setFontWeight('bold')
+               .setHorizontalAlignment('center')
+               .setVerticalAlignment('middle')
+               .setFontSize(12);
+      sheet.setRowHeight(fila, 30);
+      fila++;
+
+      // Fila 2: encabezados de columna
+      const encabezados = ['HORA','Lunes','Martes','Miércoles','Jueves','Viernes','Sabado','Domingo'];
+      sheet.getRange(fila, 1, 1, 8)
+           .setValues([encabezados])
+           .setBackground(COLOR_DIAS)
+           .setFontColor(COLOR_TEXTO)
+           .setFontWeight('bold')
+           .setFontStyle('italic')
+           .setHorizontalAlignment('center')
+           .setVerticalAlignment('middle')
+           .setFontSize(9);
+      sheet.setRowHeight(fila, 22);
+      fila++;
+
+      // Filas de horas
+      for (let h = 0; h < HORAS.length; h++) {
+        sheet.setRowHeight(fila + h, 25);
+
+        sheet.getRange(fila + h, 1)
+             .setValue(HORAS[h])
+             .setBackground(COLOR_DIAS)
+             .setFontColor(COLOR_TEXTO)
+             .setFontWeight('bold')
+             .setFontStyle('italic')
+             .setHorizontalAlignment('center')
+             .setVerticalAlignment('middle')
+             .setFontSize(9);
+
+        sheet.getRange(fila + h, 2, 1, 7)
+             .setBackground(BG_VACIO)
+             .setHorizontalAlignment('center')
+             .setVerticalAlignment('middle')
+             .setBorder(true, true, true, true, true, true,
+                        '#C5D5E5', SpreadsheetApp.BorderStyle.SOLID);
+      }
+      fila += HORAS.length;
+
+      // Fila separadora vacía
+      sheet.setRowHeight(fila, 8);
+      fila++;
+    }
+
+    // Anchos de columna
+    sheet.setColumnWidth(1, 80);
+    for (let c = 2; c <= 8; c++) sheet.setColumnWidth(c, 120);
+
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, msg: err.message };
+  }
+}
+
+function calcularSemanasDelMes(mesIdx, year) {
+  const primerDia      = new Date(year, mesIdx, 1);
+  const ultimoDia      = new Date(year, mesIdx + 1, 0).getDate();
+  const diaSemanaInicio = primerDia.getDay(); // 0=Dom,1=Lun,...,6=Sab
+
+  // Primer domingo del mes (fin de la primera semana Mon-Dom)
+  const primerDomingo = (diaSemanaInicio === 0) ? 1 : (8 - diaSemanaInicio);
+
+  const semanas = [];
+  let inicio = 1;
+  let fin    = Math.min(primerDomingo, ultimoDia);
+
+  semanas.push({ label: `Semana del ${inicio} al ${fin}`, inicio, fin });
+  inicio = fin + 1;
+
+  while (inicio <= ultimoDia) {
+    fin = Math.min(inicio + 6, ultimoDia);
+    semanas.push({ label: `Semana del ${inicio} al ${fin}`, inicio, fin });
+    inicio = fin + 1;
+  }
+
+  return semanas;
 }
