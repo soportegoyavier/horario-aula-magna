@@ -168,6 +168,9 @@
   <div class="field">
     <label>Categoría</label>
     <div class="categoria-opciones" id="categorias"></div>
+    <div id="cat-otro-wrap" style="display:none;margin-top:8px;">
+      <input type="text" id="cat-otro-texto" placeholder="Escribe el tipo de evento..." maxlength="40">
+    </div>
   </div>
 
   <button class="btn btn-primary" onclick="enviar()" id="btnGuardar">
@@ -182,7 +185,8 @@
       'Ensayo':             '#B3D9FF',
       'Evento/Conferencia': '#FFD9B3',
       'Ceremonia':          '#E8D5FF',
-      'Clase/Taller':       '#B3FFD9'
+      'Clase/Taller':       '#B3FFD9',
+      'Otro':               '#F1F3F4'
     };
 
     let todasHoras = [];
@@ -260,6 +264,9 @@
       document.querySelectorAll('.categoria-opcion').forEach(el => {
         el.classList.toggle('seleccionado', el.getAttribute('data-cat') === cat);
       });
+      const wrap = document.getElementById('cat-otro-wrap');
+      wrap.style.display = cat === 'Otro' ? 'block' : 'none';
+      if (cat !== 'Otro') document.getElementById('cat-otro-texto').value = '';
     }
 
     function cargarSemanas() {
@@ -286,6 +293,12 @@
       if (document.getElementById('semana').value === '') { mostrarMsg('Selecciona una semana.', false); return; }
       if (!categoriaSeleccionada) { mostrarMsg('Selecciona una categoría.', false); return; }
 
+      let categoriaFinal = categoriaSeleccionada;
+      if (categoriaSeleccionada === 'Otro') {
+        categoriaFinal = document.getElementById('cat-otro-texto').value.trim();
+        if (!categoriaFinal) { mostrarMsg('Escribe el nombre de la categoría.', false); return; }
+      }
+
       const datos = {
         mes:           document.getElementById('mes').value,
         indiceSemana:  parseInt(document.getElementById('semana').value),
@@ -295,7 +308,7 @@
         nombre:        nombre,
         responsable:   document.getElementById('responsable').value.trim(),
         notas:         document.getElementById('notas').value.trim(),
-        categoria:     categoriaSeleccionada
+        categoria:     categoriaFinal
       };
 
       setLoading(true);

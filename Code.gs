@@ -6,7 +6,8 @@ const COLORES = {
   'Ensayo':             { bg: '#B3D9FF', text: '#003366' },
   'Evento/Conferencia': { bg: '#FFD9B3', text: '#663300' },
   'Ceremonia':          { bg: '#E8D5FF', text: '#3D0066' },
-  'Clase/Taller':       { bg: '#B3FFD9', text: '#003322' }
+  'Clase/Taller':       { bg: '#B3FFD9', text: '#003322' },
+  'Otro':               { bg: '#F1F3F4', text: '#3C4043' }
 };
 
 const HORAS = [
@@ -199,9 +200,9 @@ function eliminarEvento(id) {
         filaObjetivo = i + 1;
         evtDatos = {
           mes:       filas[i][1],
-          filaIni:   filas[i][10],
-          filaFin:   filas[i][11],
-          columna:   filas[i][12]
+          filaIni:   parseInt(filas[i][10]),
+          filaFin:   parseInt(filas[i][11]),
+          columna:   parseInt(filas[i][12])
         };
         break;
       }

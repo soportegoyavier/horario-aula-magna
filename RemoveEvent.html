@@ -141,13 +141,15 @@
       'Ensayo':             '#B3D9FF',
       'Evento/Conferencia': '#FFD9B3',
       'Ceremonia':          '#E8D5FF',
-      'Clase/Taller':       '#B3FFD9'
+      'Clase/Taller':       '#B3FFD9',
+      'Otro':               '#F1F3F4'
     };
     const COLORES_TEXT = {
       'Ensayo':             '#003366',
       'Evento/Conferencia': '#663300',
       'Ceremonia':          '#3D0066',
-      'Clase/Taller':       '#003322'
+      'Clase/Taller':       '#003322',
+      'Otro':               '#3C4043'
     };
 
     let eventos = <?!= eventosJson ?>;
@@ -196,12 +198,13 @@
     }
 
     function confirmarEliminar() {
+      const id = idPendiente; // capturar antes de que cerrarConfirm lo nullifique
       cerrarConfirm();
       google.script.run
         .withSuccessHandler(res => {
           if (res.ok) {
-            eventos = eventos.filter(e => e.id !== idPendiente);
-            const card = document.getElementById('card-' + idPendiente);
+            eventos = eventos.filter(e => e.id !== id);
+            const card = document.getElementById('card-' + id);
             if (card) card.remove();
             if (!document.querySelectorAll('.evento-card').length) {
               document.getElementById('lista').innerHTML = '<div class="vacio">No hay eventos registrados.</div>';
@@ -210,10 +213,9 @@
           } else {
             mostrarMsg('Error: ' + res.msg, false);
           }
-          idPendiente = null;
         })
         .withFailureHandler(e => mostrarMsg('Error: ' + e.message, false))
-        .eliminarEvento(idPendiente);
+        .eliminarEvento(id);
     }
 
     function mostrarMsg(texto, ok) {
