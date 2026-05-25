@@ -117,11 +117,18 @@ function obtenerSemanasDeMes(nombreMes) {
       if (match && mesIdx !== undefined) {
         const diaInicio = parseInt(match[1]);
         const diaFin    = parseInt(match[2]);
-        // JS getDay(): 0=Dom, 1=Lun, ..., 6=Sab → convertir a 0=Lun, ..., 6=Dom
-        const jsDay     = new Date(year, mesIdx, diaInicio).getDay();
-        const posInicio = jsDay === 0 ? 6 : jsDay - 1;
-        const posFin    = Math.min(posInicio + (diaFin - diaInicio), 6);
-        diasValidos     = DIAS.slice(posInicio, posFin + 1);
+        const numDias   = diaFin - diaInicio + 1;
+
+        if (numDias >= 7 || numDias < 1) {
+          // Semana completa o etiqueta con cruce de mes → todos los días
+          diasValidos = [...DIAS];
+        } else {
+          // Semana parcial: calcular desde qué día empieza
+          const jsDay     = new Date(year, mesIdx, diaInicio).getDay(); // 0=Dom,1=Lun,...
+          const posInicio = jsDay === 0 ? 6 : jsDay - 1; // convertir a 0=Lun,...,6=Dom
+          const posFin    = Math.min(posInicio + numDias - 1, 6);
+          diasValidos     = DIAS.slice(posInicio, posFin + 1);
+        }
       }
 
       semanas.push({
