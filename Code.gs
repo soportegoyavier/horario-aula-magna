@@ -20,6 +20,11 @@ const DIAS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sabado','Domingo
 const HOJA_DATOS = 'DATOS';
 const BG_VACIO = '#E8F4F8';
 
+const MESES_IDX = {
+  'ENERO':0,'FEBRERO':1,'MARZO':2,'ABRIL':3,'MAYO':4,'JUNIO':5,
+  'JULIO':6,'AGOSTO':7,'SEPTIEMBRE':8,'OCTUBRE':9,'NOVIEMBRE':10,'DICIEMBRE':11
+};
+
 // =====================================================================
 // MENÚ — solo visible para editores
 // =====================================================================
@@ -100,14 +105,30 @@ function obtenerSemanasDeMes(nombreMes) {
 
   const col1 = sheet.getRange(1, 1, ultimaFila, 1).getValues();
   const semanas = [];
+  const mesIdx = MESES_IDX[nombreMes.toUpperCase()];
+  const year = new Date().getFullYear();
 
   for (let i = 0; i < col1.length; i++) {
-    const val = String(col1[i][0]).trim().toLowerCase();
-    if (val.startsWith('semana')) {
+    const val = String(col1[i][0]).trim();
+    if (val.toLowerCase().startsWith('semana')) {
+      const match = val.match(/del\s+(\d+)\s+al\s+(\d+)/i);
+      let diasValidos = [...DIAS]; // por defecto todos
+
+      if (match && mesIdx !== undefined) {
+        const diaInicio = parseInt(match[1]);
+        const diaFin    = parseInt(match[2]);
+        // JS getDay(): 0=Dom, 1=Lun, ..., 6=Sab → convertir a 0=Lun, ..., 6=Dom
+        const jsDay     = new Date(year, mesIdx, diaInicio).getDay();
+        const posInicio = jsDay === 0 ? 6 : jsDay - 1;
+        const posFin    = Math.min(posInicio + (diaFin - diaInicio), 6);
+        diasValidos     = DIAS.slice(posInicio, posFin + 1);
+      }
+
       semanas.push({
-        label: String(col1[i][0]).trim(),
-        indice: semanas.length,
-        filaInicio: i + 1
+        label:       val,
+        indice:      semanas.length,
+        filaInicio:  i + 1,
+        diasValidos
       });
     }
   }
@@ -134,6 +155,9 @@ function agregarEvento(datos) {
 
     const idxDia = DIAS.indexOf(datos.dia);
     if (idxDia < 0) return { ok: false, msg: 'Día inválido' };
+    if (semana.diasValidos && !semana.diasValidos.includes(datos.dia)) {
+      return { ok: false, msg: `"${datos.dia}" no pertenece a la semana "${semana.label}". Días válidos: ${semana.diasValidos.join(', ')}` };
+    }
 
     // Fila: filaInicio de semana + 2 (encabezado semana + encabezado días) + índice hora
     const filaBase   = semana.filaInicio + 2;

@@ -122,7 +122,7 @@
     </div>
     <div class="field">
       <label>Semana</label>
-      <select id="semana">
+      <select id="semana" onchange="alCambiarSemana()">
         <option value="">— Selecciona mes —</option>
       </select>
     </div>
@@ -191,6 +191,7 @@
 
     let todasHoras = [];
     let categoriaSeleccionada = '';
+    let semanasData = [];
 
     google.script.run
       .withSuccessHandler(inicializar)
@@ -273,9 +274,11 @@
       const mes = document.getElementById('mes').value;
       const selSemana = document.getElementById('semana');
       selSemana.innerHTML = '<option>Cargando...</option>';
+      actualizarDias([...['Lunes','Martes','Miércoles','Jueves','Viernes','Sabado','Domingo']]);
       if (!mes) return;
       google.script.run
         .withSuccessHandler(semanas => {
+          semanasData = semanas;
           selSemana.innerHTML = '<option value="">— Selecciona semana —</option>';
           semanas.forEach(s => {
             const o = document.createElement('option');
@@ -284,6 +287,26 @@
           });
         })
         .obtenerSemanasDeMes(mes);
+    }
+
+    function alCambiarSemana() {
+      const val = document.getElementById('semana').value;
+      if (val === '') {
+        actualizarDias(['Lunes','Martes','Miércoles','Jueves','Viernes','Sabado','Domingo']);
+        return;
+      }
+      const semana = semanasData[parseInt(val)];
+      if (semana && semana.diasValidos) actualizarDias(semana.diasValidos);
+    }
+
+    function actualizarDias(dias) {
+      const selDia = document.getElementById('dia');
+      selDia.innerHTML = '';
+      dias.forEach(d => {
+        const o = document.createElement('option');
+        o.value = d; o.textContent = d;
+        selDia.appendChild(o);
+      });
     }
 
     function enviar() {
