@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <base target="_top">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Google Sans', Arial, sans-serif;
+      font-size: 13px;
+      color: #202124;
+      background: #fff;
+      padding: 16px;
+    }
+    h2 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #202124;
+      margin-bottom: 4px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e8eaed;
+    }
+    .contador {
+      font-size: 11px;
+      color: #5f6368;
+      margin-bottom: 14px;
+      margin-top: 4px;
+    }
+    .buscador {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 13px;
+      outline: none;
+      margin-bottom: 12px;
+    }
+    .buscador:focus { border-color: #1a73e8; }
+    .mes-grupo { margin-bottom: 16px; }
+    .mes-titulo {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #1a73e8;
+      margin-bottom: 8px;
+      padding: 4px 0;
+      border-bottom: 1px solid #e8eaed;
+    }
+    .evento-card {
+      border-left: 4px solid #dadce0;
+      border-radius: 0 6px 6px 0;
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      background: #f8f9fa;
+    }
+    .evento-nombre {
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .evento-meta {
+      font-size: 11px;
+      color: #5f6368;
+      margin-top: 3px;
+      line-height: 1.6;
+    }
+    .cat-badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 10px;
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .vacio {
+      text-align: center;
+      color: #5f6368;
+      padding: 24px 0;
+    }
+  </style>
+</head>
+<body>
+  <h2>Todos los Eventos</h2>
+  <div class="contador" id="contador"></div>
+
+  <input class="buscador" type="text" placeholder="Buscar..." oninput="filtrar(this.value)">
+
+  <div id="lista"></div>
+
+  <script>
+    const COLORES_BG = {
+      'Ensayo':             '#B3D9FF',
+      'Evento/Conferencia': '#FFD9B3',
+      'Ceremonia':          '#E8D5FF',
+      'Clase/Taller':       '#B3FFD9'
+    };
+    const COLORES_BORDER = {
+      'Ensayo':             '#4A90D9',
+      'Evento/Conferencia': '#D97A00',
+      'Ceremonia':          '#9B4FCC',
+      'Clase/Taller':       '#00AA55'
+    };
+    const COLORES_TEXT = {
+      'Ensayo':             '#003366',
+      'Evento/Conferencia': '#663300',
+      'Ceremonia':          '#3D0066',
+      'Clase/Taller':       '#003322'
+    };
+
+    const todos = <?= eventosJson ?>;
+    document.getElementById('contador').textContent = todos.length + ' evento(s) registrado(s)';
+    renderizar(todos);
+
+    function filtrar(q) {
+      const f = todos.filter(e =>
+        e.nombre.toLowerCase().includes(q.toLowerCase()) ||
+        (e.responsable || '').toLowerCase().includes(q.toLowerCase()) ||
+        e.mes.toLowerCase().includes(q.toLowerCase()) ||
+        e.dia.toLowerCase().includes(q.toLowerCase())
+      );
+      renderizar(f);
+    }
+
+    function renderizar(lista) {
+      const el = document.getElementById('lista');
+      if (!lista.length) {
+        el.innerHTML = '<div class="vacio">No hay eventos que mostrar.</div>';
+        return;
+      }
+
+      // Agrupar por mes
+      const grupos = {};
+      lista.forEach(e => {
+        if (!grupos[e.mes]) grupos[e.mes] = [];
+        grupos[e.mes].push(e);
+      });
+
+      el.innerHTML = Object.keys(grupos).map(mes => `
+        <div class="mes-grupo">
+          <div class="mes-titulo">${mes}</div>
+          ${grupos[mes].map(e => `
+            <div class="evento-card" style="border-left-color:${COLORES_BORDER[e.categoria]||'#ccc'}">
+              <div class="evento-nombre">${e.nombre}</div>
+              <div class="evento-meta">
+                📅 ${e.dia} · ${e.horaInicio} – ${e.horaFin}
+                ${e.responsable ? '<br>👤 ' + e.responsable : ''}
+                ${e.notas ? '<br>📝 ' + e.notas : ''}
+              </div>
+              <span class="cat-badge" style="background:${COLORES_BG[e.categoria]||'#eee'};color:${COLORES_TEXT[e.categoria]||'#333'}">${e.categoria}</span>
+            </div>
+          `).join('')}
+        </div>
+      `).join('');
+    }
+  </script>
+</body>
+</html>

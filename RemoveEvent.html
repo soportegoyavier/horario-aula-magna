@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <base target="_top">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Google Sans', Arial, sans-serif;
+      font-size: 13px;
+      color: #202124;
+      background: #fff;
+      padding: 16px;
+    }
+    h2 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #c5221f;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #c5221f;
+    }
+    .buscador {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 13px;
+      outline: none;
+      margin-bottom: 12px;
+    }
+    .buscador:focus { border-color: #1a73e8; box-shadow: 0 0 0 2px rgba(26,115,232,0.15); }
+    .evento-card {
+      border: 1px solid #dadce0;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      position: relative;
+    }
+    .evento-nombre {
+      font-weight: 600;
+      font-size: 13px;
+      margin-bottom: 3px;
+    }
+    .evento-meta {
+      font-size: 11px;
+      color: #5f6368;
+      line-height: 1.5;
+    }
+    .cat-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 10px;
+      margin-bottom: 4px;
+    }
+    .btn-eliminar {
+      position: absolute;
+      top: 10px; right: 10px;
+      background: #fce8e6;
+      color: #c5221f;
+      border: 1px solid #ea4335;
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-eliminar:hover { background: #ea4335; color: #fff; }
+    .vacio {
+      text-align: center;
+      color: #5f6368;
+      font-size: 13px;
+      padding: 24px 0;
+    }
+    .msg {
+      margin-top: 10px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      display: none;
+    }
+    .msg.ok  { background: #e6f4ea; color: #137333; border: 1px solid #34a853; }
+    .msg.err { background: #fce8e6; color: #c5221f; border: 1px solid #ea4335; }
+    .confirm-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .confirm-overlay.visible { display: flex; }
+    .confirm-box {
+      background: #fff;
+      border-radius: 8px;
+      padding: 20px 24px;
+      max-width: 280px;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+    .confirm-box p { margin-bottom: 16px; font-size: 13px; }
+    .confirm-box strong { color: #202124; }
+    .confirm-btns { display: flex; gap: 10px; justify-content: center; }
+    .btn-conf {
+      padding: 8px 18px;
+      border-radius: 4px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-no   { background: #f1f3f4; color: #202124; }
+    .btn-si   { background: #c5221f; color: #fff; }
+  </style>
+</head>
+<body>
+  <h2>Eliminar Evento</h2>
+
+  <input class="buscador" type="text" placeholder="Buscar evento..." oninput="filtrar(this.value)" id="busq">
+
+  <div id="lista"></div>
+  <div class="msg" id="msgBox"></div>
+
+  <!-- Confirmación -->
+  <div class="confirm-overlay" id="overlay">
+    <div class="confirm-box">
+      <p>¿Eliminar <strong id="conf-nombre"></strong>?<br><small>Esta acción no se puede deshacer.</small></p>
+      <div class="confirm-btns">
+        <button class="btn-conf btn-no" onclick="cerrarConfirm()">Cancelar</button>
+        <button class="btn-conf btn-si" onclick="confirmarEliminar()">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const COLORES_BG = {
+      'Ensayo':             '#B3D9FF',
+      'Evento/Conferencia': '#FFD9B3',
+      'Ceremonia':          '#E8D5FF',
+      'Clase/Taller':       '#B3FFD9'
+    };
+    const COLORES_TEXT = {
+      'Ensayo':             '#003366',
+      'Evento/Conferencia': '#663300',
+      'Ceremonia':          '#3D0066',
+      'Clase/Taller':       '#003322'
+    };
+
+    let eventos = <?= eventosJson ?>;
+    let idPendiente = null;
+
+    renderizar(eventos);
+
+    function filtrar(q) {
+      const f = eventos.filter(e =>
+        e.nombre.toLowerCase().includes(q.toLowerCase()) ||
+        (e.responsable || '').toLowerCase().includes(q.toLowerCase()) ||
+        e.mes.toLowerCase().includes(q.toLowerCase())
+      );
+      renderizar(f);
+    }
+
+    function renderizar(lista) {
+      const el = document.getElementById('lista');
+      if (!lista.length) {
+        el.innerHTML = '<div class="vacio">No hay eventos registrados.</div>';
+        return;
+      }
+      el.innerHTML = lista.map(e => `
+        <div class="evento-card" id="card-${e.id}">
+          <span class="cat-badge" style="background:${COLORES_BG[e.categoria]||'#eee'};color:${COLORES_TEXT[e.categoria]||'#333'}">${e.categoria}</span>
+          <div class="evento-nombre">${e.nombre}</div>
+          <div class="evento-meta">
+            📅 ${e.mes} · ${e.dia} · ${e.horaInicio}–${e.horaFin}
+            ${e.responsable ? '<br>👤 ' + e.responsable : ''}
+            ${e.notas ? '<br>📝 ' + e.notas : ''}
+          </div>
+          <button class="btn-eliminar" onclick="pedirConfirm('${e.id}','${e.nombre.replace(/'/g,"\\'")}')">Eliminar</button>
+        </div>
+      `).join('');
+    }
+
+    function pedirConfirm(id, nombre) {
+      idPendiente = id;
+      document.getElementById('conf-nombre').textContent = nombre;
+      document.getElementById('overlay').classList.add('visible');
+    }
+
+    function cerrarConfirm() {
+      idPendiente = null;
+      document.getElementById('overlay').classList.remove('visible');
+    }
+
+    function confirmarEliminar() {
+      cerrarConfirm();
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res.ok) {
+            eventos = eventos.filter(e => e.id !== idPendiente);
+            const card = document.getElementById('card-' + idPendiente);
+            if (card) card.remove();
+            if (!document.querySelectorAll('.evento-card').length) {
+              document.getElementById('lista').innerHTML = '<div class="vacio">No hay eventos registrados.</div>';
+            }
+            mostrarMsg('Evento eliminado correctamente.', true);
+          } else {
+            mostrarMsg('Error: ' + res.msg, false);
+          }
+          idPendiente = null;
+        })
+        .withFailureHandler(e => mostrarMsg('Error: ' + e.message, false))
+        .eliminarEvento(idPendiente);
+    }
+
+    function mostrarMsg(texto, ok) {
+      const el = document.getElementById('msgBox');
+      el.textContent = texto;
+      el.className = 'msg ' + (ok ? 'ok' : 'err');
+      el.style.display = 'block';
+      if (ok) setTimeout(() => el.style.display = 'none', 4000);
+    }
+  </script>
+</body>
+</html>
