@@ -22,16 +22,16 @@ const HORAS_DISPLAY = [
   '13:00','14:00 🌇','15:00','16:00','17:00','18:00','19:00','20:00 🌙'
 ];
 
-// Gradiente de color para la columna HORA (mañana amarillo → tarde azul)
+// Gradiente: amarillo claro (mañana) → amarillo fuerte (mediodía) → azul fuerte → azul claro (tarde)
 const HORA_BG = [
-  '#FFD966','#FFE599','#FFF5C3','#FFFACD','#FFFDE7','#FFFFFF',
-  '#FFF3E0','#FFE082','#DDEEFF','#B3D9F5','#80BFEF','#4D9FE9',
-  '#2980D9','#1565C0'
+  '#FFFDE7','#FFF9C4','#FFF176','#FFEE58','#FDD835','#F9CE1F',
+  '#F5C000','#1565C0','#1976D2','#2196F3','#42A5F5','#64B5F6',
+  '#90CAF9','#BBDEFB'
 ];
 const HORA_TEXT = [
-  '#7A5800','#7A5800','#7A5800','#7A5800','#7A5800','#5f6368',
-  '#7A5800','#7A5800','#0D47A1','#0D47A1','#0D47A1','#FFFFFF',
-  '#FFFFFF','#FFFFFF'
+  '#827717','#827717','#827717','#827717','#827717','#827717',
+  '#5D4037','#FFFFFF','#FFFFFF','#FFFFFF','#FFFFFF','#0D47A1',
+  '#0D47A1','#0D47A1'
 ];
 
 // Lunes a Sábado (sin Domingo)
@@ -249,7 +249,7 @@ function renderizarSemana(sheet, mes, indiceSemana) {
     sheet.getRange(row, 1)
          .setValue(HORAS_DISPLAY[h])
          .setFontFamily('Poppins').setFontSize(11)
-         .setFontWeight('bold').setFontStyle('italic')
+         .setFontWeight('normal').setFontStyle('normal')
          .setBackground(HORA_BG[h]).setFontColor(HORA_TEXT[h])
          .setHorizontalAlignment('center').setVerticalAlignment('middle');
 
@@ -386,15 +386,18 @@ function agregarEvento(datos) {
       }
     }
 
-    // Guardar en DATOS
+    // Guardar en DATOS (las horas como texto para evitar auto-conversión de Sheets)
     const id    = Utilities.getUuid();
     const hojaD = obtenerOCrearHojaDatos();
+    const nuevaFila = hojaD.getLastRow() + 1;
     hojaD.appendRow([
       id, datos.mes, datos.indiceSemana, datos.dia,
       datos.horaInicio, datos.horaFin,
       datos.nombre, datos.responsable || '', datos.notas || '',
       datos.categoria
     ]);
+    // Forzar formato texto en las celdas de hora para que no se conviertan a Date
+    hojaD.getRange(nuevaFila, 5, 1, 2).setNumberFormat('@');
 
     refrescarVistaActual(datos.mes, datos.indiceSemana);
     return { ok: true, id };
@@ -532,10 +535,15 @@ function calcularDiasValidos(mesIdx, year, diaInicio, diaFin) {
   return DIAS.slice(posIni, posFin + 1);
 }
 
-// Convierte hora en formato am/pm al formato 24h usado internamente
+// Convierte hora al formato 24h "HH:MM" usado internamente.
+// Google Sheets auto-convierte "07:00" a un objeto Date al leerlo desde la hoja,
+// por eso se detecta instanceof Date primero.
 function normalizarHora(h) {
+  if (h instanceof Date) {
+    return String(h.getHours()).padStart(2, '0') + ':' + String(h.getMinutes()).padStart(2, '0');
+  }
   h = String(h).trim().toLowerCase();
-  if (/^\d{2}:\d{2}$/.test(h)) return h; // ya está en 24h
+  if (/^\d{2}:\d{2}$/.test(h)) return h;
   const m = h.match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/);
   if (!m) return h;
   let hr = parseInt(m[1]);
