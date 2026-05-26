@@ -18,7 +18,7 @@ const HORAS = [
 
 const DIAS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sabado','Domingo'];
 const HOJA_DATOS = 'DATOS';
-const BG_VACIO = '#E8F4F8';
+const BG_VACIO = '#d9d9d9';
 
 const MESES_IDX = {
   'ENERO':0,'FEBRERO':1,'MARZO':2,'ABRIL':3,'MAYO':4,'JUNIO':5,
@@ -352,9 +352,10 @@ function crearMes(datos) {
     const posicion = hojaD ? hojaD.getIndex() - 1 : ss.getSheets().length;
     const sheet    = ss.insertSheet(nombre, posicion);
 
-    const COLOR_HEADER  = '#37474F'; // encabezado semana
-    const COLOR_DIAS    = '#455A64'; // fila de días y HORA
-    const COLOR_TEXTO   = '#FFFFFF';
+    const COLOR_FONDO  = '#5a5b5d'; // fondo encabezados y HORA
+    const COLOR_CELDAS = '#d9d9d9'; // fondo celdas de horario
+    const COLOR_TEXTO  = '#FFFFFF';
+    const FUENTE       = 'Poppins';
 
     let fila = 1;
 
@@ -363,60 +364,64 @@ function crearMes(datos) {
       const rngSemana = sheet.getRange(fila, 1, 1, 8);
       rngSemana.merge()
                .setValue(semana.label)
-               .setBackground(COLOR_HEADER)
+               .setBackground(COLOR_FONDO)
                .setFontColor(COLOR_TEXTO)
                .setFontWeight('bold')
+               .setFontFamily(FUENTE)
+               .setFontSize(15)
                .setHorizontalAlignment('center')
-               .setVerticalAlignment('middle')
-               .setFontSize(12);
-      sheet.setRowHeight(fila, 30);
+               .setVerticalAlignment('middle');
+      sheet.setRowHeight(fila, 32);
       fila++;
 
-      // Fila 2: encabezados de columna
+      // Fila 2: encabezados de columna (HORA + días)
       const encabezados = ['HORA','Lunes','Martes','Miércoles','Jueves','Viernes','Sabado','Domingo'];
       sheet.getRange(fila, 1, 1, 8)
            .setValues([encabezados])
-           .setBackground(COLOR_DIAS)
+           .setBackground(COLOR_FONDO)
            .setFontColor(COLOR_TEXTO)
            .setFontWeight('bold')
-           .setFontStyle('italic')
+           .setFontFamily(FUENTE)
+           .setFontSize(17)
            .setHorizontalAlignment('center')
-           .setVerticalAlignment('middle')
-           .setFontSize(9);
-      sheet.setRowHeight(fila, 22);
+           .setVerticalAlignment('middle');
+      sheet.setRowHeight(fila, 28);
       fila++;
 
       // Filas de horas
       for (let h = 0; h < HORAS.length; h++) {
         sheet.setRowHeight(fila + h, 25);
 
+        // Celda HORA
         sheet.getRange(fila + h, 1)
              .setValue(HORAS[h])
-             .setBackground(COLOR_DIAS)
+             .setBackground(COLOR_FONDO)
              .setFontColor(COLOR_TEXTO)
              .setFontWeight('bold')
              .setFontStyle('italic')
+             .setFontFamily(FUENTE)
+             .setFontSize(11)
              .setHorizontalAlignment('center')
-             .setVerticalAlignment('middle')
-             .setFontSize(9);
+             .setVerticalAlignment('middle');
 
+        // Celdas de días (B-H)
         sheet.getRange(fila + h, 2, 1, 7)
-             .setBackground(BG_VACIO)
+             .setBackground(COLOR_CELDAS)
              .setHorizontalAlignment('center')
              .setVerticalAlignment('middle')
              .setBorder(true, true, true, true, true, true,
-                        '#C5D5E5', SpreadsheetApp.BorderStyle.SOLID);
+                        '#b0b0b0', SpreadsheetApp.BorderStyle.SOLID);
       }
       fila += HORAS.length;
 
       // Fila separadora vacía
-      sheet.setRowHeight(fila, 8);
+      sheet.setRowHeight(fila, 10);
       fila++;
     }
 
     // Anchos de columna
-    sheet.setColumnWidth(1, 80);
-    for (let c = 2; c <= 8; c++) sheet.setColumnWidth(c, 120);
+    sheet.setColumnWidth(1, 97);
+    for (let c = 2; c <= 8; c++) sheet.setColumnWidth(c, 155);
 
     return { ok: true };
   } catch (err) {
