@@ -59,10 +59,6 @@ function onOpen(e) {
         .addItem('Eliminar Evento',        'mostrarEliminarEvento')
         .addSeparator()
         .addItem('Ver Todos los Eventos', 'mostrarTodosEventos')
-        .addSeparator()
-        .addItem('🔄 Refrescar Vista',    'refrescarManual')
-        .addItem('🔍 Diagnóstico',        'diagnosticarEventos')
-        .addItem('Configurar HOJA1',      'configurarHoja1')
         .addToUi();
     }
   } catch (err) {}
