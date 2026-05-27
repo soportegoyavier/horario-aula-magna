@@ -60,6 +60,7 @@ function onOpen(e) {
         .addSeparator()
         .addItem('Ver Todos los Eventos', 'mostrarTodosEventos')
         .addSeparator()
+        .addItem('🔄 Refrescar Vista',    'refrescarManual')
         .addItem('Configurar HOJA1',      'configurarHoja1')
         .addToUi();
     }
@@ -106,7 +107,10 @@ function onEdit(e) {
       const idx     = semanas.findIndex(s => s.label === semLabel);
       if (idx >= 0) renderizarSemana(sheet, mes, idx);
     }
-  } catch (err) {}
+  } catch (err) {
+    SpreadsheetApp.getActiveSpreadsheet()
+      .toast('Error al renderizar: ' + err.message, '⚠️ Error', 8);
+  }
 }
 
 // =====================================================================
@@ -267,15 +271,16 @@ function renderizarSemana(sheet, mes, indiceSemana) {
   }
 
   // ── Cargar eventos de esta semana desde DATOS
+  // (horaInicio/horaFin ya vienen normalizados desde obtenerTodosEventos)
   const eventos = obtenerTodosEventos().filter(e =>
     e.mes.toUpperCase() === mes.toUpperCase() &&
-    parseInt(e.indiceSemana) === indiceSemana
+    e.indiceSemana === indiceSemana
   );
 
   eventos.forEach(evt => {
-    const idxIni = HORAS.indexOf(normalizarHora(evt.horaInicio));
-    const idxFin = HORAS.indexOf(normalizarHora(evt.horaFin));
-    const idxDia = DIAS.map(d => d.toLowerCase()).indexOf(String(evt.dia).toLowerCase());
+    const idxIni = HORAS.indexOf(evt.horaInicio);
+    const idxFin = HORAS.indexOf(evt.horaFin);
+    const idxDia = DIAS.map(d => d.toLowerCase()).indexOf(evt.dia.toLowerCase());
     if (idxIni < 0 || idxFin < 0 || idxDia < 0) return;
 
     const filaIni  = F + 2 + idxIni;
@@ -433,6 +438,37 @@ function eliminarEvento(id) {
   }
 }
 
+// Botón de menú: fuerza el renderizado de la semana actualmente seleccionada
+function refrescarManual() {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(HOJA_VISTA);
+  if (!sheet) { SpreadsheetApp.getUi().alert('No se encontró HOJA1.'); return; }
+
+  const mes      = String(sheet.getRange(2, 3).getValue()).trim();
+  const semLabel = String(sheet.getRange(2, 7).getValue()).trim();
+
+  if (!mes || !semLabel || semLabel.includes('Selecciona')) {
+    SpreadsheetApp.getUi().alert('Selecciona un mes y una semana primero.');
+    return;
+  }
+
+  const mesIdx = MESES_IDX[mes.toUpperCase()];
+  if (mesIdx === undefined) {
+    SpreadsheetApp.getUi().alert('Mes no reconocido: "' + mes + '"');
+    return;
+  }
+
+  const semanas = calcularSemanasDelMes(mesIdx, new Date().getFullYear());
+  const idx     = semanas.findIndex(s => s.label === semLabel);
+  if (idx < 0) {
+    SpreadsheetApp.getUi().alert('Semana no encontrada: "' + semLabel + '"');
+    return;
+  }
+
+  renderizarSemana(sheet, mes, idx);
+  ss.toast('Vista actualizada ✓', '', 2);
+}
+
 // Refresca HOJA1 si está mostrando exactamente el mes/semana modificado
 function refrescarVistaActual(mes, indiceSemana) {
   try {
@@ -464,16 +500,16 @@ function obtenerTodosEventos() {
     for (let i = 1; i < filas.length; i++) {
       if (filas[i][0]) {
         evts.push({
-          id:           filas[i][0],
-          mes:          filas[i][1],
-          indiceSemana: filas[i][2],
-          dia:          filas[i][3],
-          horaInicio:   filas[i][4],
-          horaFin:      filas[i][5],
-          nombre:       filas[i][6],
-          responsable:  filas[i][7],
-          notas:        filas[i][8],
-          categoria:    filas[i][9]
+          id:           String(filas[i][0]),
+          mes:          String(filas[i][1]),
+          indiceSemana: parseInt(filas[i][2]),
+          dia:          String(filas[i][3]),
+          horaInicio:   normalizarHora(filas[i][4]),
+          horaFin:      normalizarHora(filas[i][5]),
+          nombre:       String(filas[i][6]),
+          responsable:  String(filas[i][7] || ''),
+          notas:        String(filas[i][8] || ''),
+          categoria:    String(filas[i][9])
         });
       }
     }
