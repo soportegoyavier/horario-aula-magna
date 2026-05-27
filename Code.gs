@@ -61,6 +61,7 @@ function onOpen(e) {
         .addItem('Ver Todos los Eventos', 'mostrarTodosEventos')
         .addSeparator()
         .addItem('🔄 Refrescar Vista',    'refrescarManual')
+        .addItem('🔍 Diagnóstico',        'diagnosticarEventos')
         .addItem('Configurar HOJA1',      'configurarHoja1')
         .addToUi();
     }
@@ -438,6 +439,46 @@ function eliminarEvento(id) {
   }
 }
 
+// Muestra un diagnóstico de los eventos guardados vs los valores esperados
+function diagnosticarEventos() {
+  const sheet    = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(HOJA_VISTA);
+  const mes      = sheet ? String(sheet.getRange(2, 3).getValue()).trim() : '?';
+  const semLabel = sheet ? String(sheet.getRange(2, 7).getValue()).trim() : '?';
+
+  const mesIdx  = MESES_IDX[mes.toUpperCase()];
+  const semanas = mesIdx !== undefined ? calcularSemanasDelMes(mesIdx, new Date().getFullYear()) : [];
+  const semIdx  = semanas.findIndex(s => s.label === semLabel);
+
+  const todos   = obtenerTodosEventos();
+  const filtros = todos.filter(e =>
+    e.mes.toUpperCase() === mes.toUpperCase() && e.indiceSemana === semIdx
+  );
+
+  let msg = `Mes seleccionado: "${mes}" (idx=${mesIdx})\n`;
+  msg += `Semana: "${semLabel}" (idx=${semIdx})\n`;
+  msg += `Total eventos en DATOS: ${todos.length}\n`;
+  msg += `Eventos para esta semana: ${filtros.length}\n\n`;
+
+  filtros.forEach((e, i) => {
+    const ri = HORAS.indexOf(e.horaInicio);
+    const rf = HORAS.indexOf(e.horaFin);
+    const rd = DIAS.map(d => d.toLowerCase()).indexOf(e.dia.toLowerCase());
+    msg += `Evento ${i+1}: ${e.nombre}\n`;
+    msg += `  mes="${e.mes}" semIdx=${e.indiceSemana} dia="${e.dia}"\n`;
+    msg += `  horaIni="${e.horaInicio}" (idx=${ri}) horaFin="${e.horaFin}" (idx=${rf}) diaIdx=${rd}\n`;
+    msg += `  ${ri<0||rf<0||rd<0 ? '⚠️ INVISIBLE (índice -1)' : '✅ Debería aparecer'}\n\n`;
+  });
+
+  if (todos.length > 0 && filtros.length === 0) {
+    msg += 'Muestra de todos los eventos:\n';
+    todos.slice(0, 3).forEach(e => {
+      msg += `  mes="${e.mes}" semIdx=${e.indiceSemana} horaIni="${e.horaInicio}"\n`;
+    });
+  }
+
+  SpreadsheetApp.getUi().alert(msg);
+}
+
 // Botón de menú: fuerza el renderizado de la semana actualmente seleccionada
 function refrescarManual() {
   const ss    = SpreadsheetApp.getActiveSpreadsheet();
@@ -571,19 +612,31 @@ function calcularDiasValidos(mesIdx, year, diaInicio, diaFin) {
   return DIAS.slice(posIni, posFin + 1);
 }
 
-// Convierte hora al formato 24h "HH:MM" usado internamente.
-// Google Sheets auto-convierte "07:00" a un objeto Date al leerlo desde la hoja,
-// por eso se detecta instanceof Date primero.
+// Convierte cualquier representación de hora al formato "HH:MM" usado en HORAS[].
+// Casos que maneja:
+//   - Date (Sheets convierte "07:00" a Date al leer): usa formatDate con zona horaria de la hoja
+//   - "7:00" o "07:00" (con o sin cero inicial): agrega cero si falta
+//   - "7:00am" / "3:00pm": convierte a 24h
 function normalizarHora(h) {
   if (h instanceof Date) {
-    return String(h.getHours()).padStart(2, '0') + ':' + String(h.getMinutes()).padStart(2, '0');
+    try {
+      const tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+      return Utilities.formatDate(h, tz, 'HH:mm');
+    } catch (e) {
+      return String(h.getHours()).padStart(2, '0') + ':' + String(h.getMinutes()).padStart(2, '0');
+    }
   }
-  h = String(h).trim().toLowerCase();
-  if (/^\d{2}:\d{2}$/.test(h)) return h;
-  const m = h.match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/);
-  if (!m) return h;
-  let hr = parseInt(m[1]);
-  if (m[3] === 'pm' && hr < 12) hr += 12;
-  if (m[3] === 'am' && hr === 12) hr = 0;
-  return String(hr).padStart(2, '0') + ':' + m[2];
+  h = String(h).trim();
+  // "7:00" o "07:00" (sin am/pm) → agregar cero inicial si falta
+  const m24 = h.match(/^(\d{1,2}):(\d{2})$/);
+  if (m24) return m24[1].padStart(2, '0') + ':' + m24[2];
+  // "7:00am", "3:00pm", etc.
+  const mAP = h.match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
+  if (mAP) {
+    let hr = parseInt(mAP[1]);
+    if (mAP[3].toLowerCase() === 'pm' && hr < 12) hr += 12;
+    if (mAP[3].toLowerCase() === 'am' && hr === 12) hr = 0;
+    return String(hr).padStart(2, '0') + ':' + mAP[2];
+  }
+  return h;
 }
